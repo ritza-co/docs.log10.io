@@ -1,0 +1,94 @@
+{/* Overview */}
+# Overview
+
+Human feedback plays an important part in training Machine Learning and Generative AI models. Its the leading reason for the human-like behaviour of OpenAI's ChatGPT, the reason AI bots are better than humans in lots of simple games, and how Generative AI technologies understand moods and emotions when generating images or songs. 
+
+So, what exactly is "human feedback"? 
+
+## Feedback in Machine Learning
+
+Let's take a simplified look at the training pipeline of an LLM. We'll use GPT models as a case-study, since it was one of the first LLMs to implement human feedback. 
+
+The GPT model is essentially trained to predict text. Given a sentence, it will predict what words or sentences should follow. If the primitive model was provided with a half-written story about technology taking over the world, it would be able to complete the story. If however, we were to ask it to create its own story, the model struggles. It might suggest methods to write a story or provide tips and explanations about storywriting instead. 
+
+This behaviour can be improved with extensive prompt engineering or using a system to provide it additional context, such as Retrieval Augmented Generation (RAG). However, this on its own does not yield perfect results. It's also not very practical to expect lots of prompt engineering to go with every query. To guide the model to act in a human-like manner, we need to provide it human feedback. 
+
+Another example where unassisted training falls short is in cases where things are "intuitive". For instance, how would we define the emotional impact of an art piece in a way a Generative Model can understand? It's easy to train for clearly labelled aspects, but training for a specific mood or feeling is hard. 
+
+The solution is to have a team of humans manually reviewing model outputs and tuning the model with that information. The favored behaviours get positive feedback, and the discouraged ones get negative feedback. The model is designed to seek a higher reward, so it will choose actions that are rewarded positively. This greatly improves the behaviour of models.
+
+## Integrating Human Feedback
+
+Providing human feedback is not so simple as providing a rating of how "good" or "bad" the output is. This is largely because human opinions are not always objective.
+
+Let's continue with the example of writing a story. How would you objectively define if the story is good? Even for things which appear simple to rate, there may be a difference of opinion. Some people could not like the story for its content, or some could dislike the writing style. There could be biases or other factors skewing their opinion. This makes it hard to use intutive ranking as model feedback. 
+
+A solution to this problem is training an additional Reward Model to predict human preferences and rank the generative model's output accordingly. This model is trained on a large dataset of manually ranked model outputs. These outputs are ranked comparatively - meaning that instead of assigning an objective score to the output, the reviewers choose a preference out of two model outputs. This reduces the bias since its easier for people to choose a better option than rank outputs objectively. 
+
+All of this data is then aggregated and used to compute a general quality score. The reward model then uses this information to predict human response to a given output. Since the LLM tries to maximise the reward it gets from the reward model, it will favour producing outputs that align with human preferences. 
+
+> How this quality score and the rewards are calculated may differ, as there's no single calculation or formula that works in all scenarios.
+
+There are still some drawbacks to this method. Overfitting and unintentional bias remains a possibility. The reward model needs to be managed carefully to prevent the generative model from trying to cheat the system. However, human feedback remains a vital part of the training process, and is commonly used in various training pipelines. 
+
+## Feedback in Production
+
+While human feedback is used mostly in the tuning process, it also has its used after deployment. Models in production are monitored to ensure they're still delivering results to standards. Human feedback in this instance can be a company's testing and QA teams or end-user feedback. This feedback is gathered, analysed, and may be used either to directly tune a model further or to isolate pit-falls in performance. 
+
+## Feedback in Log10
+
+When logging feedback in log10, we use feedback tasks to specify the expected format. We then use this predefined format to log feedback. Tags are used to assing feedback to the relevant model output. 
+
+The Log10 Dashboard provides a visual interface to analyse all recorded feedback. It can also be downloaded for further analysis, or used in Log10s AutoFeedback system.
+
+## Feedback Tasks
+
+In the task definiton, we'll specify the exact values to be expected in feedback, required values, descriptions, etc. Task definitions follow a JSON schema and can be as complex or simple as required. For instance, end-user feedback systems may use a Task with emoji or numeric satisfaction ratings. A system collecting feedback for training may use a more complex system to score multiple properties, like Coherence or Relevance. 
+
+Example: 
+
+```python
+task = FeedbackTask().create(
+    name="Satisfaction Rating",
+    task_schema={
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Satisfaction Rating",
+        "description": "Choose out of five satisfaction levels",
+        "type": "string",
+        "enum": ["Very Satisfied", "Satisfied", "Neutral", "Dissatisfied", "Very Dissatisfied"]
+    }
+)
+```
+
+This will create a Feedback task that allows a user to choose a satisfaction rating from the five options. Any feedback that uses this task has to follow this same formatting to be valid. 
+
+Tasks can also be created directly from the dashboard, or using the CLI. 
+
+## Logging Feedback
+
+We can log feedback using the schema we defined with the task. In addition, we can provide tags to link feedback to completions. We can also use tags to sort feedback logs in the dashboard. 
+
+Example: 
+
+```python
+Feedback().create(
+    task_id=task_id,
+    values="Dissatisfied", 
+    completion_tags_selector=[unique_id]
+)
+```
+
+In a hypothetical workflow, we will create a feedback task to define the schema. Then a review system or end users will provide the feedback according to the schema. The logs can be tagged with something like a unique session ID. Feedback logs will then be reviewed or analysed in the dashboard or by downloading the logs. 
+
+In addition to using the Python library, feedback can also be logged using the CLI or via the dashboard directly. 
+
+## Auto Feedback 
+
+After we have gathered some amount of human feedback manually, we can use Auto Feedback to scale it. Feedback data is sorted by tags and used to train a special model for a specific tag. This can then generate more feedback for new completions generated with that tag.
+
+A final human review can then be performed on the generated feedback from the Log10 dashboards. Generated feedback can be rejected, edited, or accepted from there. 
+
+We can use this to effectively scale the amount of feedback which can be used to train the reward model. We could also use it to automate performance monitoring for a production model. The dashboard allows you to set monitoring thresholds which will send alerts if a models perfomance dips too low based on generated feedback. 
+
+
+
